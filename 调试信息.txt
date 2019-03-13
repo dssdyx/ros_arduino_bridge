@@ -1,0 +1,32 @@
+1.桌面的“star hardware”被重定向到"/home/mini4/mini4_workspace/src/start_pkg/launch/test.launch"，原定向为"/home/mini4/mini4_workspace/src/start_pkg/launch/start_laser.launch"，恢复只需要注释到"/home/mini4/sh/start_hardware.sh"中第5行，取消第4行的注释。
+
+2.调试底盘PID可以在开启调试节点后重新开终端运行"rqt_plot /XXXX(topic)"，具体topics可通过rostopic list查阅。例：rqt_plot /Encoderspd/linear/x /Encodergoal/linear/x 会出现当前里程计单位计数和目标单位计数曲线，界面上绿色钩子图标点击后可以更改坐标轴大小，右边点击autoscroll可以让曲线自动滑动。
+
+3.源代码具体改动如下
+A.上位机ROS
+（1）base_controller.py 215-218 发布目标里程计速度话题/Encodergoal(geometry_msgs/Twist left:linear.x right:linear.y)
+（2）arduino_node.py 162-176 发布当前里程计速度话题/Encoderspd和当前里程计读数话题/Encoder (geometry_msgs/Twist left:linear.x right:linear.y)
+B.下位机Arduino
+int runCommand()中
+	int pid_args[4];->double pid_args[4];
+	case UPDATE_PID
+		Serial.println("OK");
+	break;
+	----->
+	case UPDATE_PID:
+      		Serial.println("OK");
+      		str = strtok(p,":");
+      		while(str!=NULL){
+			pid_args[i]=atof(str);
+        		i++;
+        		str=strtok(NULL,":");
+      		}
+      		Kp = pid_args[0];
+      		Kd = pid_args[1];
+      		Ki  = pid_args[2];
+      		Serial.print("Kp:");
+      		Serial.print(Kp);
+      		leftPID.SetTunings(Kp,Ki,Kd);
+      		rightPID.SetTunings(Kp,Ki,Kd);
+      	break;
+第一次运行请讲arduino和PC串口连接输入"u 0.05 0.001 1"查看是否会输出0.05
